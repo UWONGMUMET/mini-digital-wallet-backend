@@ -9,8 +9,8 @@ export const config = {
             expiresIn: process.env.JWT_EXPIRES_IN
         },
         refresh: {
-            secret: process.env.JWT_REFRESH_SECRET,
-            expiresIn: process.env.JWT_REFRESH_EXPIRES_IN
+            secret: process.env.REFRESH_SECRET,
+            expiresIn: process.env.REFRESH_EXPIRES_IN
         }
     },
     saltRounds: Number(process.env.BCRYPT_SALT_ROUNDS),
