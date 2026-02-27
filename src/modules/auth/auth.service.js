@@ -158,4 +158,36 @@ export const refreshTokenService = async ({ refreshToken }) => {
         accessToken: newAcessToken,
         refreshToken: newRefreshToken
     };
-}
+};
+
+export const logoutService = async ({ refreshToken }) => {
+    const tokens = await prisma.refreshToken.findMany();
+
+    let matchedToken = null;
+
+    for (const token of tokens) {
+        const isMatch = await comparePassword(refreshToken, token.token);
+        if (isMatch) {
+            matchedToken = token;
+            break;
+        }
+    }
+
+    if (!matchedToken) {
+        throw new AppError({
+            message: "Invalid refresh token",
+            statusCode: 401,
+            code: "INVALID_REFRESH_TOKEN"
+        });
+    }
+
+    await prisma.refreshToken.delete({
+        where: {
+            id: matchedToken.id
+        }
+    });
+
+    return {
+        message: "User logged out successfully"
+    };
+};
