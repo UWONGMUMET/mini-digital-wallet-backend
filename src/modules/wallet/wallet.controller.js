@@ -72,6 +72,8 @@ export const withdraw = async (req, res, next) => {
             userId: id, 
             amount 
         });
+
+        return success(res, wallet, "Withdraw successful", 200);
     } catch (error) {
         next(error);
     }
