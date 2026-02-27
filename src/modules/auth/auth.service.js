@@ -2,7 +2,7 @@ import { config } from "../../config/config.js";
 import { comparePassword, hashPassword } from "../../utils/hash.js";
 import { prisma } from "../../config/prisma.js";
 import { AppError } from "../../utils/AppError.js";
-import { generateAccessToken, generateRefreshToken } from "../../utils/jwt.js";
+import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from "../../utils/jwt.js";
 import ms from "ms";
 
 export const registerService = async ({ email, password }) => {
@@ -86,4 +86,76 @@ export const loginService = async ({ email, password }) => {
         accessToken,
         refreshToken
     }
+};
+
+export const refreshTokenService = async ({ refreshToken }) => {
+    const decoded = verifyRefreshToken(refreshToken);
+
+    if (!decoded) {
+        throw new AppError({
+            message: "Invalid refresh token",
+            statusCode: 401,
+            code: "INVALID_REFRESH_TOKEN"
+        });
+    }
+
+    const user = await prisma.user.findUnique({
+        where: { id: decoded.id }
+    });
+    
+    if (!user) {
+        throw new AppError({
+            message: "User not found",
+            statusCode: 404,
+            code: "USER_NOT_FOUND"
+        });
+    }
+
+    const tokens = await prisma.refreshToken.findMany({
+        where: {
+            userId: user.id
+        }
+    });
+
+    let matchedToken = null;
+
+    for (const token of tokens) {
+        const isMatch = await comparePassword(refreshToken, token.token);
+        if (isMatch) {
+            matchedToken = token;
+            break;
+        }
+    }
+
+    if (!matchedToken) {
+        throw new AppError({
+            message: "Invalid refresh token",
+            statusCode: 401,
+            code: "INVALID_REFRESH_TOKEN"
+        });
+    }
+
+    await prisma.refreshToken.delete({
+        where: {
+            id: matchedToken.id
+        }
+    });
+
+    const newAcessToken = generateAccessToken({ id: user.id });
+    const newRefreshToken = generateRefreshToken({ id: user.id });
+
+    await prisma.refreshToken.create({
+        data: {
+            token: await hashPassword(newRefreshToken),
+            userId: user.id,
+            expiresAt: new Date(
+                Date.now() + ms(config.jwt.refresh.expiresIn)
+            )
+        }
+    });
+    
+    return {
+        accessToken: newAcessToken,
+        refreshToken: newRefreshToken
+    };
 }
