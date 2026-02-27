@@ -4,6 +4,7 @@ import { success } from "./utils/response.js";
 import { notFoundMiddleware } from "./middlewares/notFoundMiddleware.js";
 import { errorHandler } from "./middlewares/errorHandler.js";
 import authRoutes from "./modules/auth/auth.routes.js";
+import walletRoutes from "./modules/wallet/wallet.routes.js";
 
 const app = express();
 app.use(express.json());
@@ -14,6 +15,7 @@ app.get("/health-check", (req, res) => {
 });
 
 app.use("/api/auth", authRoutes);
+app.use("/api/wallet", walletRoutes);
 
 app.use(notFoundMiddleware);
 app.use(errorHandler)
