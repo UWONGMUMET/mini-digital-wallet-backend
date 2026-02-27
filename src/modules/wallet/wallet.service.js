@@ -65,4 +65,60 @@ export const depositService = async ({ userId, amount }) => {
 
         return updateWallet;
     })
-}
+};
+
+export const withdrawService = async ({ userId, amount }) => {
+    if (amount <= 0) {
+        throw new AppError({
+            message: "Invalid amount",
+            statusCode: 400,
+            code: "INVALID_AMOUNT"
+        });
+    }
+
+    return prisma.$transaction(async (tx) => {
+        const wallet = await tx.wallet.findUnique({
+            where: {
+                userId
+            }
+        });
+
+        if (!wallet) {
+            throw new AppError({
+                message: "Wallet not found",
+                statusCode: 404,
+                code: "WALLET_NOT_FOUND"
+            });
+        }
+
+        if (Number(wallet.balance) < amount) {
+            throw new AppError({
+                message: "Insufficient balance",
+                statusCode: 400,
+                code: "INSUFFICIENT_BALANCE"
+            });
+        }
+
+        const updatedWallet = await tx.wallet.update({
+            where: {
+                id: wallet.id
+            },
+            data: {
+                balance: {
+                    decrement: amount
+                }
+            }
+        });
+
+        await tx.transaction.create({
+            data: {
+                amount,
+                walletId: updatedWallet.id,
+                type: "withdraw",
+                reference: `WD-${Date.now()}`
+            }
+        });
+
+        return updatedWallet;
+    });
+};
